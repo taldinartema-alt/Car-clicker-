@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Авто Кликер</title>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      padding: 24px 16px;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(160deg, #172554, #111827 65%);
+    }
+
+    .game {
+      width: 100%;
+      max-width: 440px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    h1 {
+      margin: 10px 0 6px;
+    }
+
+    .subtitle {
+      color: #bac7df;
+      margin-bottom: 24px;
+    }
+
+    .money {
+      font-size: 36px;
+      font-weight: bold;
+      margin: 16px 0 4px;
+    }
+
+    .income {
+      color: #bac7df;
+      margin-bottom: 22px;
+    }
+
+    .car-button {
+      width: 220px;
+      height: 180px;
+      border: 2px solid #60a5fa;
+      border-radius: 28px;
+      color: white;
+      font-size: 100px;
+      background: #1e3a8a;
+      box-shadow: 0 10px 30px #0005;
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform 0.08s;
+    }
+
+    .car-button:active {
+      transform: scale(0.94);
+    }
+
+    .hint {
+      color: #bac7df;
+      margin: 14px 0 28px;
+    }
+
+    .upgrades {
+      display: grid;
+      gap: 12px;
+      text-align: left;
+    }
+
+    .upgrade {
+      padding: 16px;
+      border: 1px solid #ffffff22;
+      border-radius: 16px;
+      color: white;
+      background: #ffffff10;
+    }
+
+    .upgrade h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+
+    .upgrade p {
+      margin: 0 0 12px;
+      color: #bac7df;
+      font-size: 14px;
+    }
+
+    .upgrade button {
+      width: 100%;
+      padding: 12px;
+      border: 0;
+      border-radius: 10px;
+      color: #10203b;
+      font-size: 16px;
+      font-weight: bold;
+      background: #60a5fa;
+      cursor: pointer;
+    }
+
+    .upgrade button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="game">
+    <h1>🚘 Авто Кликер</h1>
+    <div class="subtitle">Прокачай свою машину!</div>
+
+    <div class="money"><span id="money">0</span> 🪙</div>
+    <div class="income" id="income">За клик: 1 монета</div>
+
+    <button class="car-button" id="car" type="button" aria-label="Нажать на машину">
+      🚗
+    </button>
+
+    <div class="hint">Нажимай на машину, чтобы зарабатывать монеты</div>
+
+    <section class="upgrades">
+      <div class="upgrade">
+        <h2>🔧 Улучшить двигатель</h2>
+        <p>Каждое нажатие приносит больше монет.</p>
+        <button id="engineButton" type="button"></button>
+      </div>
+
+      <div class="upgrade">
+        <h2>🤖 Автоматический заработок</h2>
+        <p>Машина сама приносит монеты каждую секунду.</p>
+        <button id="autoButton" type="button"></button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const telegram = window.Telegram?.WebApp;
+    telegram?.ready();
+    telegram?.expand();
+
+    const defaults = {
+      money: 0,
+      clickPower: 1,
+      engineCost: 25,
+      autoLevel: 0,
+      autoCost: 100
+    };
+
+    function loadGame() {
+      try {
+        const saved = JSON.parse(localStorage.getItem("carClickerSave"));
+        return saved ? { ...defaults, ...saved } : { ...defaults };
+      } catch {
+        return { ...defaults };
+      }
+    }
+
+    let game = loadGame();
+
+    const moneyElement = document.getElementById("money");
+    const incomeElement = document.getElementById("income");
+    const engineButton = document.getElementById("engineButton");
+    const autoButton = document.getElementById("autoButton");
+
+    function saveGame() {
+      localStorage.setItem("carClickerSave", JSON.stringify(game));
+    }
+
+    function render() {
+      moneyElement.textContent = Math.floor(game.money).toLocaleString("ru-RU");
+      incomeElement.textContent =
+        `За клик: ${game.clickPower} монет · В секунду: ${game.autoLevel}`;
+engineButton.textContent =
+        `Улучшить — ${game.engineCost} 🪙`;
+      engineButton.disabled = game.money < game.engineCost;
+
+      autoButton.textContent =
+        `Купить — ${game.autoCost} 🪙`;
+      autoButton.disabled = game.money < game.autoCost;
+    }
+
+    document.getElementById("car").addEventListener("click", () => {
+      game.money += game.clickPower;
+      telegram?.HapticFeedback?.impactOccurred("light");
+      saveGame();
+      render();
+    });
+
+    engineButton.addEventListener("click", () => {
+      if (game.money < game.engineCost) return;
+
+      game.money -= game.engineCost;
+      game.clickPower += 1;
+      game.engineCost = Math.ceil(game.engineCost * 1.6);
+
+      saveGame();
+      render();
+    });
+
+    autoButton.addEventListener("click", () => {
+      if (game.money < game.autoCost) return;
+
+      game.money -= game.autoCost;
+      game.autoLevel += 1;
+      game.autoCost = Math.ceil(game.autoCost * 1.8);
+
+      saveGame();
+      render();
+    });
+
+    setInterval(() => {
+      if (game.autoLevel > 0) {
+        game.money += game.autoLevel;
+        saveGame();
+        render();
+      }
+    }, 1000);
+
+    render();
+  </script>
+</body>
+</html>
